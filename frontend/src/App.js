@@ -6,7 +6,7 @@ import './App.css';
 // Configuration constants
 const MAX_TOKENS = 4000;  // Default max tokens
 const MAX_MESSAGE_LENGTH = 50000;  // Maximum characters to show in UI
-const API_URL = 'http://localhost:5001/api';
+const API_URL = 'http://localhost:5001';
 
 function App() {
   // State for user authentication
@@ -20,6 +20,10 @@ function App() {
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
+
+  // Agent selection
+  const [selectedAgent, setSelectedAgent] = useState('example_agent');
+  const [availableAgents, setAvailableAgents] = useState(['example_agent']);
 
   // State for debug logs
   const [debugLogs, setDebugLogs] = useState([]);
@@ -60,7 +64,7 @@ function App() {
     addDebugLog(`Attempting to login as ${username}...`);
 
     try {
-      const response = await fetch(`${API_URL}/login`, {
+      const response = await fetch(`${API_URL}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -77,11 +81,31 @@ function App() {
         setToken(data.token);
         setIsLoggedIn(true);
         addDebugLog(`Logged in successfully with token: ${data.token.substring(0, 6)}...`);
+
+        // Check server health and available agents
+        checkServerHealth();
       } else {
         addDebugLog(`Login failed: ${data.detail || data.message}`);
       }
     } catch (error) {
       addDebugLog(`Login error: ${error.message}`);
+    }
+  };
+
+  // Check server health and available agents
+  const checkServerHealth = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/health`);
+      const data = await response.json();
+
+      if (response.ok) {
+        addDebugLog(`Server is healthy: ${data.status}`);
+      }
+
+      // In a real implementation, you'd fetch available agents here
+      // For now, we're using the hardcoded list
+    } catch (error) {
+      addDebugLog(`Health check error: ${error.message}`);
     }
   };
 
@@ -96,13 +120,13 @@ function App() {
     setDebugLogs(prev => [...prev, `[${timestamp}] ${log}`]);
   };
 
-  // Send a message and get streaming response
+  // Send a message and get streaming response using new endpoint
   const sendMessage = async () => {
     if (!input.trim()) return;
 
     // Add user message to chat
     addMessage('user', input);
-    addDebugLog(`Sending message: ${input.substring(0, 30)}${input.length > 30 ? '...' : ''}`);
+    addDebugLog(`Sending message to agent '${selectedAgent}': ${input.substring(0, 30)}${input.length > 30 ? '...' : ''}`);
 
     // Clear input field
     const message = input.trim();
@@ -130,114 +154,197 @@ function App() {
     addMessage('assistant', 'Loading...');
 
     try {
-      // 1. Initiate POST request to set up the session
-      addDebugLog("Initializing chat session with POST request");
-      const response = await fetch(`${API_URL}/chat-stream`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          messages: apiMessages
-        })
-      });
+      // Call the new /chat/completions endpoint
+      addDebugLog(`Initializing chat with agent: ${selectedAgent}`);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`HTTP error ${response.status}: ${errorData.detail || response.statusText}`);
-      }
+      if (selectedAgent) {
+        // Use the new agent-based endpoint
+        const response = await fetch(`${API_URL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            agent_name: selectedAgent,
+            messages: apiMessages,
+            stream: true,
+            max_tokens: MAX_TOKENS
+          })
+        });
 
-      // Prepare to start streaming
-      setIsStreaming(true);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`HTTP error ${response.status}: ${errorData.detail || response.statusText}`);
+        }
 
-      // Clear the loading message
-      setMessages(prev => {
-        const newMessages = [...prev];
-        newMessages[newMessages.length - 1].content = '';
-        return newMessages;
-      });
+        // Since the response is already streaming, we need to read the SSE stream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-      // 2. Set up EventSource for streaming
-      const sse_url = `${API_URL}/chat-stream?token=${token}&max_tokens=${MAX_TOKENS}`;
-      addDebugLog(`Creating SSE connection with URL: ${sse_url}`);
-      const newEventSource = new EventSource(sse_url);
-      setEventSource(newEventSource);
+        // Clear the loading message
+        setMessages(prev => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1].content = '';
+          return newMessages;
+        });
 
-      // 3. Debug - important for understanding how events arrive
-      newEventSource.onopen = () => {
-        addDebugLog("SSE connection opened successfully");
-      };
+        // Prepare to start streaming
+        setIsStreaming(true);
 
-      // 4. Handle regular message events
-      newEventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
+        // Read the stream
+        while (true) {
+          const { done, value } = await reader.read();
 
-          if (data.content) {
-            // Append to our reference string
-            currentResponseRef.current += data.content;
+          if (done) {
+            addDebugLog('Stream finished');
+            setIsStreaming(false);
+            setIsInitializing(false);
+            break;
+          }
 
-            // Check if the response is getting too long
-            if (currentResponseRef.current.length > MAX_MESSAGE_LENGTH) {
-              // Add a note about truncation
-              addDebugLog(`Response exceeded ${MAX_MESSAGE_LENGTH} characters, may be truncated`);
+          // Decode the chunk and add it to the buffer
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process full SSE messages in the buffer
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || ''; // Keep the last incomplete message in the buffer
+
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              try {
+                const eventData = JSON.parse(line.substring(5).trim());
+
+                if (eventData.content) {
+                  // Append to our reference string
+                  currentResponseRef.current += eventData.content;
+
+                  // Update the message
+                  setMessages(prev => {
+                    const newMessages = [...prev];
+                    newMessages[newMessages.length - 1].content = currentResponseRef.current;
+                    return newMessages;
+                  });
+                }
+              } catch (e) {
+                addDebugLog(`Error parsing message: ${e.message}`);
+              }
+            } else if (line.startsWith('event: debug')) {
+              const debugData = line.split('\n')[1];
+              if (debugData && debugData.startsWith('data:')) {
+                addDebugLog(debugData.substring(5).trim());
+              }
+            } else if (line.startsWith('event: completion')) {
+              addDebugLog('Streaming completed');
+              setIsStreaming(false);
+              setIsInitializing(false);
+            } else if (line.startsWith('event: error')) {
+              const errorData = line.split('\n')[1];
+              if (errorData && errorData.startsWith('data:')) {
+                try {
+                  const errorObj = JSON.parse(errorData.substring(5).trim());
+                  addDebugLog(`Stream error: ${errorObj.error || 'Unknown error'}`);
+                } catch (e) {
+                  addDebugLog(`Stream error: ${errorData.substring(5).trim()}`);
+                }
+              } else {
+                addDebugLog('Stream error: Unknown error');
+              }
+              setIsStreaming(false);
+              setIsInitializing(false);
             }
-
-            // Update the entire message at once
-            setMessages(prev => {
-              // Create a new array for React to detect the change
-              const newMessages = [...prev];
-
-              // Replace the entire content with our accumulated string
-              newMessages[newMessages.length - 1].content = currentResponseRef.current;
-
-              return newMessages;
-            });
           }
-
-          // Update for completion event
-          if (data.status === 'complete' && data.total_chars) {
-            addDebugLog(`Streaming completed: ${data.total_chars} characters received`);
-          }
-        } catch (error) {
-          addDebugLog(`Error parsing message: ${error.message}`);
         }
-      };
+      } else {
+        // Fall back to the old endpoint if no agent is selected
+        // This is the same as your existing implementation
+        const response = await fetch(`${API_URL}/api/chat-stream`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            messages: apiMessages
+          })
+        });
 
-      // 5. Handle specific event types
-      newEventSource.addEventListener('debug', (event) => {
-        addDebugLog(event.data);
-      });
-
-      newEventSource.addEventListener('completion', (event) => {
-        addDebugLog('Streaming completed');
-        newEventSource.close();
-        setEventSource(null);
-        setIsInitializing(false);
-        setIsStreaming(false);
-      });
-
-      newEventSource.addEventListener('error', (event) => {
-        let errorMessage = 'Connection closed or error occurred';
-
-        try {
-          if (event.data) {
-            const errorData = JSON.parse(event.data);
-            errorMessage = errorData.error || errorMessage;
-          }
-        } catch (e) {
-          // If parsing fails, use default message
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(`HTTP error ${response.status}: ${errorData.detail || response.statusText}`);
         }
 
-        addDebugLog(`Stream error: ${errorMessage}`);
+        // Prepare to start streaming
+        setIsStreaming(true);
 
-        newEventSource.close();
-        setEventSource(null);
-        setIsStreaming(false);
-        setIsInitializing(false);
-      });
+        // Clear the loading message
+        setMessages(prev => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1].content = '';
+          return newMessages;
+        });
 
+        // Set up EventSource for streaming
+        const sse_url = `${API_URL}/api/chat-stream?token=${token}&max_tokens=${MAX_TOKENS}`;
+        addDebugLog(`Creating SSE connection with URL: ${sse_url}`);
+        const newEventSource = new EventSource(sse_url);
+        setEventSource(newEventSource);
+
+        // Set up event handlers (same as your existing implementation)
+        newEventSource.onopen = () => {
+          addDebugLog("SSE connection opened successfully");
+        };
+
+        newEventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+
+            if (data.content) {
+              // Append to our reference string
+              currentResponseRef.current += data.content;
+
+              // Update the entire message at once
+              setMessages(prev => {
+                const newMessages = [...prev];
+                newMessages[newMessages.length - 1].content = currentResponseRef.current;
+                return newMessages;
+              });
+            }
+          } catch (error) {
+            addDebugLog(`Error parsing message: ${error.message}`);
+          }
+        };
+
+        newEventSource.addEventListener('debug', (event) => {
+          addDebugLog(event.data);
+        });
+
+        newEventSource.addEventListener('completion', (event) => {
+          addDebugLog('Streaming completed');
+          newEventSource.close();
+          setEventSource(null);
+          setIsInitializing(false);
+          setIsStreaming(false);
+        });
+
+        newEventSource.addEventListener('error', (event) => {
+          let errorMessage = 'Connection closed or error occurred';
+          try {
+            if (event.data) {
+              const errorData = JSON.parse(event.data);
+              errorMessage = errorData.error || errorMessage;
+            }
+          } catch (e) {
+            // If parsing fails, use default message
+          }
+          addDebugLog(`Stream error: ${errorMessage}`);
+          newEventSource.close();
+          setEventSource(null);
+          setIsStreaming(false);
+          setIsInitializing(false);
+        });
+      }
     } catch (error) {
       addDebugLog(`Error: ${error.message}`);
       setIsStreaming(false);
@@ -255,7 +362,7 @@ function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <h1>NEAR AI Agent runner</h1>
+        <h1>NEAR AI Agent Runner</h1>
       </header>
 
       <div className="container">
@@ -291,52 +398,67 @@ function App() {
             </div>
           </div>
         ) : (
-          // Chat interface
-          <div className="chat-container">
-            <div className="chat-messages">
-              {messages.map((message, index) => (
-                <div
-                  key={index}
-                  className={`message ${message.role === 'user' ? 'user' : 'assistant'}`}
-                >
-                  <div className="message-role">{message.role === 'user' ? 'You' : 'AI'}</div>
-                  <div className="message-content">
-                    {message.content}
-                    {message.role === 'assistant' && isInitializing && index === messages.length - 1 && (
-                      <div className="loading-indicator">
-                        <div className="loading-dot"></div>
-                        <div className="loading-dot"></div>
-                        <div className="loading-dot"></div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              <div ref={messageEndRef} />
-            </div>
-
-            <div className="chat-input">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your message..."
-                disabled={isStreaming || isInitializing}
-                onKeyPress={(e) => e.key === 'Enter' && !isStreaming && !isInitializing && sendMessage()}
-              />
-              <button
-                onClick={sendMessage}
+          // Chat interface with agent selector
+          <div className="main-interface">
+            <div className="agent-selector">
+              <label>Select Agent:</label>
+              <select
+                value={selectedAgent}
+                onChange={(e) => setSelectedAgent(e.target.value)}
                 disabled={isStreaming || isInitializing}
               >
-                {isInitializing ? 'Initializing...' : isStreaming ? 'Streaming...' : 'Send'}
-              </button>
+                {availableAgents.map(agent => (
+                  <option key={agent} value={agent}>{agent}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="chat-container">
+              <div className="chat-messages">
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`message ${message.role === 'user' ? 'user' : 'assistant'}`}
+                  >
+                    <div className="message-role">{message.role === 'user' ? 'You' : 'AI'}</div>
+                    <div className="message-content">
+                      {message.content}
+                      {message.role === 'assistant' && isInitializing && index === messages.length - 1 && (
+                        <div className="loading-indicator">
+                          <div className="loading-dot"></div>
+                          <div className="loading-dot"></div>
+                          <div className="loading-dot"></div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                <div ref={messageEndRef} />
+              </div>
+
+              <div className="chat-input">
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Type your message..."
+                  disabled={isStreaming || isInitializing}
+                  onKeyPress={(e) => e.key === 'Enter' && !isStreaming && !isInitializing && sendMessage()}
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={isStreaming || isInitializing}
+                >
+                  {isInitializing ? 'Initializing...' : isStreaming ? 'Streaming...' : 'Send'}
+                </button>
+              </div>
             </div>
           </div>
         )}
 
         {/* Debug log panel */}
         <div className="debug-container">
-          <h3>Debug Logs{isInitializing.toString()}</h3>
+          <h3>Debug Logs</h3>
           <div className="debug-logs">
             {debugLogs.map((log, index) => (
               <div key={index} className="debug-log">{log}</div>

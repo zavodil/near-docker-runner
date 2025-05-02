@@ -30,9 +30,15 @@
     flex-direction: row;
   }
 
-  .chat-container {
+  .main-interface {
     flex: 2;
-    height: 600px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .chat-container {
+    height: 560px;
   }
 
   .debug-container {
@@ -47,6 +53,43 @@
     flex: 1;
     height: auto;
   }
+}
+
+/* Agent selector */
+.agent-selector {
+  background-color: #f9f9f9;
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agent-selector label {
+  font-weight: 500;
+  color: #555;
+  margin-right: 10px;
+}
+
+.agent-selector select {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  flex: 1;
+  background-color: white;
+}
+
+.agent-selector select:focus {
+  border-color: #4285f4;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+}
+
+.agent-selector select:disabled {
+  background-color: #f0f0f0;
+  cursor: not-allowed;
 }
 
 /* Styles for the login form */
