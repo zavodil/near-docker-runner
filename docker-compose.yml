@@ -1,0 +1,17 @@
+# docker-compose.yml
+
+version: '3'
+
+services:
+  # Backend Python server
+  backend:
+    build: ./backend
+    ports:
+      - "5001:5001"
+    env_file:
+      - .env
+    environment:
+      - SECRET_KEY=your_secret_key_here
+    volumes:
+      - ./backend:/app
+    restart: "no"  # For debugging purposes
