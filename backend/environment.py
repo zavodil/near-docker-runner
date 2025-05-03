@@ -1,6 +1,7 @@
 # backend/environment.py
 
 import asyncio
+import json
 import logging
 from openai import OpenAI
 from config import API_BASE_URL, AUTH_TOKEN, DEFAULT_MODEL
@@ -31,8 +32,6 @@ class Environment:
 
     def completion(self, messages, model=None, temperature=0.7, frequency_penalty=0, n=1, stream=True, max_tokens=None):
         """Make a completion request to the OpenAI API"""
-        logger.info(f"Agent requesting completion with model: {model or self.default_model}")
-
         # Create custom headers with auth token
         headers = {"Authorization": f"Bearer {self.auth_token}"}
 
@@ -47,17 +46,15 @@ class Environment:
             extra_headers=headers
         )
 
-        # If streaming, process the stream and print tokens as they come
+        # If streaming, process the stream
         collected_content = ""
         if stream:
             for chunk in response:
                 if chunk.choices and len(chunk.choices) > 0 and chunk.choices[0].delta.content:
                     content = chunk.choices[0].delta.content
                     collected_content += content
-                    # Print content for streaming back to client
+                    # Print with DATA: prefix - ensure content is transmitted as is
                     print(f"DATA:{content}", flush=True)
-                    # Small delay to avoid overwhelming the pipe
-                    asyncio.sleep(0.01)
 
             self.current_reply = collected_content
             return collected_content
@@ -68,16 +65,15 @@ class Environment:
             print(f"DATA:{content}", flush=True)
             return content
 
-    def add_reply(self, reply):
-        """Store the reply (used by the agent)"""
+    def add_reply(self, reply=None):
+        """Add a new message to the chat from the AI"""
         # If reply is provided, use it; otherwise use the stored current_reply
-        content = reply if reply else self.current_reply
+        content = reply if reply is not None else self.current_reply
 
-        # Print the message with the DATA prefix for streaming back to client
         if content and not content.isspace():
-            # Only print if we haven't already printed in completion()
-            if not self.current_reply or content != self.current_reply:
-                print(f"DATA:{content}", flush=True)
+            # Print as a new message with NEW_MESSAGE prefix to indicate this is a separate message
+            print(f"NEW_MESSAGE:{content}", flush=True)
+            print(f"DEBUG: Sent new message: {content[:30]}", flush=True)
 
         # Store this as the current reply
         self.current_reply = content

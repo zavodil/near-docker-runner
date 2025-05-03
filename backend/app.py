@@ -121,9 +121,9 @@ async def chat_completions(request: ChatRequest, req: Request, background_tasks:
             detail="Non-streaming mode not implemented yet"
         )
 
-    # Return streaming response
+    # Return streaming response, passing the token for persistent sessions
     return StreamingResponse(
-        stream_from_agent(agent_name, messages, request.max_tokens),
+        stream_from_agent(agent_name, messages, request.max_tokens, token),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to rebuild all agent Docker containers
+# Script to rebuild and clean up agent Docker containers and images
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -14,6 +14,14 @@ if ! command -v docker &> /dev/null; then
     echo -e "${RED}Error: Docker is not installed or not in PATH${NC}"
     exit 1
 fi
+
+# Stop and remove all running agent containers
+echo -e "${YELLOW}Stopping and removing all running agent containers...${NC}"
+docker ps -a | grep "agent-" | awk '{print $1}' | xargs -r docker rm -f
+
+# Remove agent images
+echo -e "${YELLOW}Removing agent images...${NC}"
+docker images | grep "agent-" | awk '{print $1":"$2}' | xargs -r docker rmi -f
 
 # Check if agents directory exists
 if [ ! -d "agents" ]; then
@@ -40,12 +48,6 @@ for AGENT_DIR in $AGENT_DIRS; do
     if [ ! -f "${AGENT_DIR}/Dockerfile" ]; then
         echo -e "${YELLOW}  - No Dockerfile found, skipping${NC}"
         continue
-    fi
-
-    # Remove existing image if it exists
-    if docker image inspect agent-${AGENT_NAME}:latest &> /dev/null; then
-        echo -e "${YELLOW}  - Removing existing image: agent-${AGENT_NAME}:latest${NC}"
-        docker rmi -f agent-${AGENT_NAME}:latest
     fi
 
     # Build the new image

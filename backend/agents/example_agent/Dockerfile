@@ -1,9 +1,15 @@
+# agents/example_agent/Dockerfile
 FROM python:3.9-slim
 
 WORKDIR /app
 
-# Install dependencies - we pre-install these to speed up agent startup
-RUN pip install --no-cache-dir openai==1.2.0 httpx==0.27.2
+# Pre-install the required packages globally to avoid reinstallation
+RUN pip install --no-cache-dir openai==1.2.0 httpx==0.27.2 && \
+    # Disable pip upgrade check to eliminate version warning
+    pip config set global.disable-pip-version-check true
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PYTHONWARNINGS=ignore
 
 # Create directory for the nearai module
 RUN mkdir -p /app/nearai/agents
