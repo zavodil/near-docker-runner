@@ -1,0 +1,88 @@
+{
+    "title": "Input schema for LangChain Agent API",
+    "description": "Configure the LangChain Structured Chat Agent settings, add tools, and set other parameters.",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "apiEndpoint": {
+            "title": "API Endpoint",
+            "type": "string",
+            "description": "The base URL of the LangChain Agent API, e.g. http://localhost:5005.",
+            "default": "http://localhost:5005"
+        },
+        "defaultModel": {
+            "title": "Default Language Model",
+            "type": "string",
+            "description": "The default language model to use with the agent. This can be overridden in API calls.",
+            "default": "fireworks::accounts/fireworks/models/llama-v3p3-70b-instruct"
+        },
+        "tools": {
+            "title": "Available Tools",
+            "type": "array",
+            "description": "List of tools available for the LangChain agent.",
+            "default": [
+                {
+                    "name": "search",
+                    "description": "Search the web for information on a given query",
+                    "args_schema": {
+                        "query": {"type": "string", "description": "The search query"}
+                    }
+                },
+                {
+                    "name": "calculator",
+                    "description": "Perform mathematical calculations",
+                    "args_schema": {
+                        "expression": {"type": "string", "description": "The mathematical expression to evaluate"}
+                    }
+                },
+                {
+                    "name": "weather",
+                    "description": "Get current weather information for a location",
+                    "args_schema": {
+                        "location": {"type": "string", "description": "The city or location name"}
+                    }
+                },
+                {
+                    "name": "wikipedia",
+                    "description": "Search Wikipedia for information on a specific topic",
+                    "args_schema": {
+                        "topic": {"type": "string", "description": "The topic to search for on Wikipedia"}
+                    }
+                },
+                {
+                    "name": "file_reader",
+                    "description": "Read the contents of a file",
+                    "args_schema": {
+                        "file_path": {"type": "string", "description": "The path to the file to read"}
+                    }
+                }
+            ]
+        },
+        "maxTokens": {
+            "title": "Max Tokens",
+            "type": "integer",
+            "description": "The maximum number of tokens to generate in the response.",
+            "default": 16384
+        },
+        "temperature": {
+            "title": "Temperature",
+            "type": "number",
+            "description": "Controls the randomness of the output. Lower values make the output more deterministic.",
+            "minimum": 0,
+            "maximum": 2,
+            "default": 0.1
+        },
+        "stopSequence": {
+            "title": "Use Stop Sequence",
+            "type": "boolean",
+            "description": "Whether to use the stop sequence 'Observation:' to prevent hallucinations.",
+            "default": true
+        },
+        "maxIterations": {
+            "title": "Max Iterations",
+            "type": "integer",
+            "description": "The maximum number of iterations (tool calls) the agent can make before stopping.",
+            "default": 5
+        }
+    }
+}
