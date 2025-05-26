@@ -1,0 +1,88 @@
+{
+  "agent_name": "conversational",
+  "agent_path": "/Users/alice/projects/nearai-runner/deployer/agents/conversational",
+  "output_directory": "out_conversational",
+  "copied_files": [
+    "__init__.py",
+    "output_parser.py",
+    "prompt.py",
+    "base.py"
+  ],
+  "analysis": {
+    "main_function": "from_llm_and_tools",
+    "main_class": "ConversationalAgent",
+    "required_imports": [
+      "from langchain_core.language_models import BaseLanguageModel",
+      "from langchain_core.tools import BaseTool",
+      "from langchain_core.prompts import PromptTemplate",
+      "from langchain.agents import AgentExecutor",
+      "from langchain.agents.conversational.base import ConversationalAgent",
+      "from langchain.agents.conversational.prompt import PREFIX, SUFFIX, FORMAT_INSTRUCTIONS"
+    ],
+    "required_parameters": {
+      "llm": "BaseLanguageModel instance - The language model to use for the agent",
+      "tools": "Sequence[BaseTool] - A list of tools the agent will have access to",
+      "prompt": "Optional - Created automatically using PREFIX, SUFFIX, and FORMAT_INSTRUCTIONS templates",
+      "other_params": "Optional parameters include callback_manager, output_parser, prefix, suffix, format_instructions, ai_prefix, human_prefix, input_variables"
+    },
+    "prompt_requirements": {
+      "required_variables": [
+        "input",
+        "chat_history",
+        "agent_scratchpad"
+      ],
+      "variable_descriptions": {
+        "input": "New input from the user",
+        "chat_history": "Previous conversation history",
+        "agent_scratchpad": "Intermediate steps and observations from tool usage",
+        "tool_names": "Comma-separated list of available tool names (injected automatically)",
+        "tools": "Formatted string of tool descriptions (injected automatically)"
+      },
+      "special_placeholders": [],
+      "prompt_pattern": "PREFIX + tool_strings + FORMAT_INSTRUCTIONS + SUFFIX",
+      "hub_pull_pattern": "Not used - uses built-in prompt templates"
+    },
+    "usage_example": "agent = ConversationalAgent.from_llm_and_tools(\n    llm=llm,\n    tools=tools,\n    prefix=PREFIX,\n    suffix=SUFFIX,\n    format_instructions=FORMAT_INSTRUCTIONS,\n    ai_prefix=\"AI\",\n    human_prefix=\"Human\"\n)\nagent_executor = AgentExecutor(agent=agent, tools=tools)",
+    "input_format": "Dictionary with keys: 'input' (user query), 'chat_history' (conversation history)",
+    "output_format": "AgentFinish with output when no tool needed, or AgentAction for tool execution",
+    "special_requirements": [
+      "Tools must have single string input (validated by validate_tools_single_input)",
+      "Agent is deprecated as of version 0.1.0 with removal planned for 1.0",
+      "Uses specific format for tool usage with 'Thought:', 'Action:', 'Action Input:', and 'Observation:' prefixes",
+      "When no tool is needed, uses format 'Thought: Do I need to use a tool? No\\nAI: [response]'"
+    ],
+    "agent_type": "CONVERSATIONAL_REACT_DESCRIPTION",
+    "execution_pattern": "Should be wrapped in AgentExecutor for execution with tools"
+  },
+  "generation_success": true,
+  "app_py_generated": true,
+  "config_used": {
+    "llm_model": "claude-opus-4-20250514",
+    "temperature": 0.7,
+    "max_tokens": 2000,
+    "default_tools": [
+      "search",
+      "calculator"
+    ],
+    "default_input": "Hello, how can you help me?",
+    "agent_config": {
+      "verbose": true,
+      "max_iterations": 10,
+      "early_stopping_method": "generate"
+    },
+    "output_format": "json",
+    "include_metadata": true,
+    "config_loading": {
+      "load_input_json": true,
+      "allow_config_override": true
+    },
+    "error_handling": {
+      "log_level": "INFO",
+      "save_errors_to_output": true
+    },
+    "tool_config": {
+      "handle_import_errors": true,
+      "warn_on_missing_tools": true
+    }
+  }
+}

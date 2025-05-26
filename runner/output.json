@@ -1,0 +1,87 @@
+{
+  "agent_name": "self_ask_with_search",
+  "agent_path": "/Users/alice/projects/nearai-runner/deployer/agents/self_ask_with_search",
+  "output_directory": "out_self_ask_with_search",
+  "copied_files": [
+    "__init__.py",
+    "output_parser.py",
+    "prompt.py",
+    "base.py"
+  ],
+  "analysis": {
+    "main_function": "create_self_ask_with_search_agent",
+    "main_class": "SelfAskWithSearchAgent",
+    "required_imports": [
+      "from langchain_core.language_models import BaseLanguageModel",
+      "from langchain_core.prompts import BasePromptTemplate, PromptTemplate",
+      "from langchain_core.tools import BaseTool, Tool",
+      "from langchain_core.runnables import Runnable, RunnablePassthrough",
+      "from langchain.agents import AgentExecutor",
+      "from langchain.agents.self_ask_with_search.output_parser import SelfAskOutputParser",
+      "from langchain.agents.format_scratchpad import format_log_to_str",
+      "from collections.abc import Sequence"
+    ],
+    "required_parameters": {
+      "llm": "LLM to use as the agent (BaseLanguageModel instance)",
+      "tools": "List of tools. Should just be of length 1, with that tool having name `Intermediate Answer`",
+      "prompt": "The prompt to use, must have input key `agent_scratchpad` which will contain agent actions and tool outputs",
+      "other_params": "None required for basic usage"
+    },
+    "prompt_requirements": {
+      "required_variables": [
+        "input",
+        "agent_scratchpad"
+      ],
+      "variable_descriptions": {
+        "input": "The user's question or query",
+        "agent_scratchpad": "Contains agent actions and tool outputs as a string"
+      },
+      "special_placeholders": [],
+      "prompt_pattern": "PromptTemplate.from_template(template) or PromptTemplate(input_variables=[\"input\", \"agent_scratchpad\"], template=template_string)",
+      "hub_pull_pattern": "hub.pull(\"hwchase17/self-ask-with-search\")"
+    },
+    "usage_example": "from langchain import hub\nfrom langchain_community.chat_models import ChatAnthropic\nfrom langchain.agents import (\n    AgentExecutor, create_self_ask_with_search_agent\n)\n\nprompt = hub.pull(\"hwchase17/self-ask-with-search\")\nmodel = ChatAnthropic(model=\"claude-3-haiku-20240307\")\ntools = [...]  # Should just be one tool with name `Intermediate Answer`\n\nagent = create_self_ask_with_search_agent(model, tools, prompt)\nagent_executor = AgentExecutor(agent=agent, tools=tools)\n\nagent_executor.invoke({\"input\": \"hi\"})",
+    "input_format": "Dictionary with 'input' key containing the user's question",
+    "output_format": "AgentAction or AgentFinish object",
+    "special_requirements": [
+      "Exactly one tool must be specified",
+      "Tool must be named 'Intermediate Answer'",
+      "Prompt must have 'agent_scratchpad' input variable",
+      "The agent uses a self-ask pattern where it asks follow-up questions and provides intermediate answers",
+      "LLM is bound with stop sequence '\\nIntermediate answer:'"
+    ],
+    "agent_type": "Self-Ask with Search Agent",
+    "execution_pattern": "Create agent with create_self_ask_with_search_agent(), wrap in AgentExecutor, then invoke with input dictionary"
+  },
+  "generation_success": true,
+  "app_py_generated": true,
+  "config_used": {
+    "llm_model": "claude-opus-4-20250514",
+    "temperature": 0.7,
+    "max_tokens": 2000,
+    "default_tools": [
+      "search",
+      "calculator"
+    ],
+    "default_input": "Hello, how can you help me?",
+    "agent_config": {
+      "verbose": true,
+      "max_iterations": 10,
+      "early_stopping_method": "generate"
+    },
+    "output_format": "json",
+    "include_metadata": true,
+    "config_loading": {
+      "load_input_json": true,
+      "allow_config_override": true
+    },
+    "error_handling": {
+      "log_level": "INFO",
+      "save_errors_to_output": true
+    },
+    "tool_config": {
+      "handle_import_errors": true,
+      "warn_on_missing_tools": true
+    }
+  }
+}

@@ -1,0 +1,86 @@
+You are an expert Python developer. Generate a complete, production-ready app.py file for running a LangChain agent.
+
+CRITICAL REQUIREMENTS:
+
+1. Generate ONLY raw Python code - no markdown, no explanations, no ```python blocks
+2. First line must be a proper Python import or shebang - NO empty lines at start
+3. Must read configuration from input.json file if it exists
+4. Must properly save output at the end of main() function
+5. Must handle both text input and file input
+6. Must use the analysis results to determine correct imports and initialization
+
+MANDATORY FEATURES:
+
+**Required Imports Pattern:**
+```python
+from dotenv import load_dotenv
+load_dotenv()
+import os
+import json
+import argparse
+import logging
+from datetime import datetime
+from typing import Dict, Any, List
+# Additional imports based on analysis
+```
+
+**Command Line Interface:**
+- argparse with --input, --output (default: output.json), --config
+- Handle both direct text and file paths as input
+
+**Configuration Loading:**
+- Load input.json for default configuration
+- Use config values for LLM model, temperature, max_tokens, default_tools
+- Allow command-line config override with --config
+
+**Agent Initialization:**
+- Use analysis results to import correct modules
+- Initialize LLM using: os.getenv("DEFAULT_MODEL_NAME", config.get("llm_model", "gpt-3.5-turbo"))
+- Set up tools using proper LangChain tool initialization:
+  * NEVER use BaseTool() constructor directly
+  * For "search": use DuckDuckGoSearchRun() from langchain_community.tools
+  * For "calculator": use LLMMathChain.from_llm(llm) wrapped in Tool
+  * Always create a proper initialize_tools() function with individual tool handling
+- Create agent using the main_function from analysis
+
+**Tool Initialization Pattern:**
+```python
+def initialize_tools(config: Dict[str, Any], llm: BaseLanguageModel) -> List[BaseTool]:
+    tools = []
+    for tool_name in config.get("default_tools", []):
+        if tool_name == "search":
+            from langchain_community.tools import DuckDuckGoSearchRun
+            tools.append(DuckDuckGoSearchRun())
+        elif tool_name == "calculator":
+            from langchain.chains import LLMMathChain
+            from langchain.tools import Tool
+            llm_math = LLMMathChain.from_llm(llm)
+            tools.append(Tool(
+                name="Calculator",
+                description="useful for mathematical calculations",
+                func=llm_math.run
+            ))
+    return tools
+```
+
+**Execution and Output:**
+- Execute agent with proper error handling
+- MUST save output to JSON file with metadata and timestamp
+- Include both result and metadata in saved file
+
+**Error Handling:**
+- Try-catch blocks around all major operations
+- Informative error messages
+- Proper logging setup
+
+STRICT OUTPUT FORMAT:
+- Start immediately with Python code (import statement or shebang)
+- End with complete main() function that saves output
+- No markdown formatting, no explanations
+- Complete, executable Python file only
+
+CRITICAL TOOL HANDLING RULES:
+- BaseTool is abstract - NEVER instantiate it directly
+- Always create initialize_tools(config, llm) function that takes both config AND llm
+- Use proper tool imports and initialization patterns
+- Handle missing tools gracefully with try/except blocks

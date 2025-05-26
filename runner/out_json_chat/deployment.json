@@ -1,0 +1,93 @@
+{
+  "agent_name": "json_chat",
+  "agent_path": "/Users/alice/projects/nearai-runner/deployer/agents/json_chat",
+  "output_directory": "out_json_chat",
+  "copied_files": [
+    "__init__.py",
+    "prompt.py",
+    "base.py"
+  ],
+  "analysis": {
+    "main_function": "create_json_chat_agent",
+    "main_class": null,
+    "required_imports": [
+      "from langchain_core.language_models import BaseLanguageModel",
+      "from langchain_core.prompts.chat import ChatPromptTemplate",
+      "from langchain_core.tools import BaseTool",
+      "from langchain_core.tools.render import render_text_description",
+      "from langchain_core.prompts import MessagesPlaceholder",
+      "from langchain.agents import AgentExecutor, create_json_chat_agent",
+      "from langchain import hub"
+    ],
+    "required_parameters": {
+      "llm": "BaseLanguageModel - LLM to use as the agent",
+      "tools": "Sequence[BaseTool] - Tools this agent has access to",
+      "prompt": "ChatPromptTemplate - Must have specific input keys (see prompt_requirements)",
+      "stop_sequence": "Union[bool, list[str]] - Optional, defaults to True. Controls stop tokens",
+      "tools_renderer": "ToolsRenderer - Optional, defaults to render_text_description. Controls how tools are converted to string",
+      "template_tool_response": "str - Optional, defaults to TEMPLATE_TOOL_RESPONSE. Template for tool responses"
+    },
+    "prompt_requirements": {
+      "required_variables": [
+        "tools",
+        "tool_names",
+        "agent_scratchpad"
+      ],
+      "variable_descriptions": {
+        "tools": "contains descriptions and arguments for each tool",
+        "tool_names": "contains all tool names",
+        "agent_scratchpad": "must be a MessagesPlaceholder. Contains previous agent actions and tool outputs as messages"
+      },
+      "special_placeholders": [
+        "MessagesPlaceholder(\"agent_scratchpad\")",
+        "MessagesPlaceholder(\"chat_history\", optional=True)"
+      ],
+      "prompt_pattern": "ChatPromptTemplate.from_messages([(\"system\", system), MessagesPlaceholder(\"chat_history\", optional=True), (\"human\", human), MessagesPlaceholder(\"agent_scratchpad\")])",
+      "hub_pull_pattern": "hub.pull(\"hwchase17/react-chat-json\")"
+    },
+    "usage_example": "from langchain import hub\nfrom langchain_community.chat_models import ChatOpenAI\nfrom langchain.agents import AgentExecutor, create_json_chat_agent\n\nprompt = hub.pull(\"hwchase17/react-chat-json\")\nmodel = ChatOpenAI()\ntools = ...\n\nagent = create_json_chat_agent(model, tools, prompt)\nagent_executor = AgentExecutor(agent=agent, tools=tools)\n\nagent_executor.invoke({\"input\": \"hi\"})\n\n# Using with chat history\nfrom langchain_core.messages import AIMessage, HumanMessage\nagent_executor.invoke(\n    {\n        \"input\": \"what's my name?\",\n        \"chat_history\": [\n            HumanMessage(content=\"hi! my name is bob\"),\n            AIMessage(content=\"Hello Bob! How can I assist you today?\"),\n        ],\n    }\n)",
+    "input_format": "Dictionary with 'input' key for the user query, and optional 'chat_history' key containing a list of HumanMessage and AIMessage objects",
+    "output_format": "Returns either an AgentAction or AgentFinish. The agent outputs JSON formatted responses with 'action' and 'action_input' keys",
+    "special_requirements": [
+      "The prompt must include {tools}, {tool_names}, and {agent_scratchpad} variables",
+      "agent_scratchpad must be a MessagesPlaceholder",
+      "The template_tool_response must contain {observation} variable",
+      "The agent uses JSON format for its logic with specific schema for tool use and final answers",
+      "Stop sequence defaults to [\"\\nObservation\"] to prevent hallucinations",
+      "The agent must be wrapped in AgentExecutor for execution"
+    ],
+    "agent_type": "JSON Chat Agent - uses JSON formatting for structured reasoning with chat models",
+    "execution_pattern": "Create agent with create_json_chat_agent(), wrap in AgentExecutor with tools, then invoke with input dictionary"
+  },
+  "generation_success": true,
+  "app_py_generated": true,
+  "config_used": {
+    "llm_model": "claude-opus-4-20250514",
+    "temperature": 0.7,
+    "max_tokens": 2000,
+    "default_tools": [
+      "search",
+      "calculator"
+    ],
+    "default_input": "Hello, how can you help me?",
+    "agent_config": {
+      "verbose": true,
+      "max_iterations": 10,
+      "early_stopping_method": "generate"
+    },
+    "output_format": "json",
+    "include_metadata": true,
+    "config_loading": {
+      "load_input_json": true,
+      "allow_config_override": true
+    },
+    "error_handling": {
+      "log_level": "INFO",
+      "save_errors_to_output": true
+    },
+    "tool_config": {
+      "handle_import_errors": true,
+      "warn_on_missing_tools": true
+    }
+  }
+}

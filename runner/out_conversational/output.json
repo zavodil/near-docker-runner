@@ -1,0 +1,49 @@
+{
+  "timestamp": "2025-05-26T17:33:42.980202",
+  "config": {
+    "llm_model": "claude-opus-4-20250514",
+    "temperature": 0.7,
+    "max_tokens": 2000,
+    "default_tools": [
+      "search",
+      "calculator"
+    ],
+    "default_input": "I don't know what is the capital of Cyprus. Can we talk about it?",
+    "agent_config": {
+      "verbose": true,
+      "max_iterations": 10,
+      "early_stopping_method": "generate"
+    },
+    "output_format": "json",
+    "include_metadata": true,
+    "config_loading": {
+      "load_input_json": true,
+      "allow_config_override": true
+    },
+    "error_handling": {
+      "log_level": "INFO",
+      "save_errors_to_output": true
+    }
+  },
+  "success": true,
+  "tools_loaded": [
+    "duckduckgo_search",
+    "Calculator"
+  ],
+  "input": "I don't know what is the capital of Cyprus. Can we talk about it?",
+  "result": "The capital of Cyprus is Nicosia, also known as Lefkosia in Greek and Lefko\u015fa in Turkish. Nicosia is the largest city in Cyprus and has been its capital since the 10th century. It is unique in that it is the world's last divided capital, split into a southern part, which is the capital of the Republic of Cyprus, and a northern part, which is the capital of the self-declared Turkish Republic of Northern Cyprus. The city is divided by a UN-patrolled demilitarized zone known as the \"Green Line,\" which was established after the Turkish invasion of Cyprus in 1974. Despite its division, Nicosia is a culturally rich city with a long history, and it serves as the cultural heart of Cyprus. Would you like to know more about its history or its current status?\n```",
+  "chat_history": [
+    "content=\"I don't know what is the capital of Cyprus. Can we talk about it?\" additional_kwargs={} response_metadata={}",
+    "content='The capital of Cyprus is Nicosia, also known as Lefkosia in Greek and Lefko\u015fa in Turkish. Nicosia is the largest city in Cyprus and has been its capital since the 10th century. It is unique in that it is the world\\'s last divided capital, split into a southern part, which is the capital of the Republic of Cyprus, and a northern part, which is the capital of the self-declared Turkish Republic of Northern Cyprus. The city is divided by a UN-patrolled demilitarized zone known as the \"Green Line,\" which was established after the Turkish invasion of Cyprus in 1974. Despite its division, Nicosia is a culturally rich city with a long history, and it serves as the cultural heart of Cyprus. Would you like to know more about its history or its current status?\\n```' additional_kwargs={} response_metadata={}"
+  ],
+  "metadata": {
+    "model": "fireworks::accounts/fireworks/models/deepseek-v3",
+    "temperature": 0.7,
+    "max_tokens": 2000,
+    "tools_used": [
+      "duckduckgo_search",
+      "Calculator"
+    ],
+    "execution_time": "2025-05-26T17:33:54.885203"
+  }
+}

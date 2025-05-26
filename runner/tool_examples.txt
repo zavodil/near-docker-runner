@@ -1,0 +1,52 @@
+CORRECT LANGCHAIN TOOL INITIALIZATION EXAMPLES:
+
+def initialize_tools(config: Dict[str, Any], llm: BaseLanguageModel) -> List[BaseTool]:
+    """Initialize tools based on configuration."""
+    tools = []
+
+    for tool_name in config.get("default_tools", []):
+        try:
+            if tool_name == "search":
+                from langchain_community.tools import DuckDuckGoSearchRun
+                tools.append(DuckDuckGoSearchRun())
+
+            elif tool_name == "calculator":
+                from langchain.chains import LLMMathChain
+                from langchain.tools import Tool
+                llm_math = LLMMathChain.from_llm(llm)
+                calculator_tool = Tool(
+                    name="Calculator",
+                    description="Useful for mathematical calculations and arithmetic",
+                    func=llm_math.run
+                )
+                tools.append(calculator_tool)
+
+            elif tool_name == "python":
+                from langchain_experimental.tools import PythonREPLTool
+                tools.append(PythonREPLTool())
+
+            elif tool_name == "terminal":
+                from langchain_community.tools import ShellTool
+                tools.append(ShellTool())
+
+            elif tool_name == "wikipedia":
+                from langchain_community.tools import WikipediaQueryRun
+                from langchain_community.utilities import WikipediaAPIWrapper
+                wikipedia = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
+                tools.append(wikipedia)
+
+        except ImportError as e:
+            print(f"Warning: Could not import tool '{tool_name}': {e}")
+            continue
+
+    return tools
+
+WRONG PATTERNS TO AVOID:
+- BaseTool(name="tool") - BaseTool is abstract
+- Calculator() - Calculator doesn't exist in langchain_community.tools
+- tools = [BaseTool(...) for ...] - List comprehension with BaseTool
+- Direct instantiation without proper imports
+
+CORRECT CALL PATTERN:
+llm = initialize_llm(config)
+tools = initialize_tools(config, llm)  # Pass BOTH config and llm
